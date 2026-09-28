@@ -1,7 +1,7 @@
 {
   "name": "perfume-scraper",
   "version": "1.0.0",
-  "description": "App privata per monitorare prezzi di profumi",
+  "description": "App privata multi-utente per monitorare prezzi di profumi",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,6 +10,9 @@
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
     "express": "^4.19.2",
+    "mongoose": "^8.0.0",
+    "bcryptjs": "^2.4.3",
+    "express-session": "^1.18.0",
     "@google/genai": "^0.1.1"
   }
 }
