@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { scrapePrices, parsePerfumeList } = require('./scraper');
+const { scrapePrices, searchPerfumeSuggestions, getPerfumeDetails } = require('./scraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,11 +22,22 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Schema Profumo (legato all'utente tramite userId)
+// Schema Profumo (con distinzione tra My Library e My Wishlist, note, brand, ml, immagini)
 const PerfumeSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true },
-    notes: String,
+    brand: String,
+    size: String,
+    imageUrl: String,
+    description: String,
+    notes: {
+        top: String,
+        heart: String,
+        base: String
+    },
+    perfumer: String,
+    year: String,
+    listType: { type: String, enum: ['library', 'wishlist'], default: 'library' },
     customUrls: [{ name: String, url: String }]
 });
 const Perfume = mongoose.model('Perfume', PerfumeSchema);
@@ -37,54 +48,40 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-    secret: 'il-collezionista-segreto-super- sicuro',
+    secret: 'il-collezionista-segreto-super-sicuro',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Imposta true se usi HTTPS con dominio personalizzato
+    cookie: { secure: false }
 }));
 
-// Middleware di protezione delle rotte
+// Middleware di autenticazione e admin
 function isAuthenticated(req, res, next) {
-    if (req.session && req.session.userId) {
-        return next();
-    }
+    if (req.session && req.session.userId) return next();
     res.redirect('/login.html');
 }
 
-// Middleware di controllo Admin (Modifica 'test' con il tuo username esatto se vuoi cambiarlo)
 function isAdmin(req, res, next) {
-    if (req.session && req.session.username === 'test') {
-        return next();
-    }
+    if (req.session && req.session.username === 'test') return next();
     res.status(403).send("Accesso negato: Area riservata agli amministratori.");
 }
 
-// --- ROTTE DI AUTENTICAZIONE ---
-
-// Registrazione
+// --- ROTTE AUTENTICAZIONE & UTENTE ---
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        
         const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).send("Questo nome utente è già occupato.");
-        }
-
+        if (existingUser) return res.status(400).send("Nome utente già occupato.");
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ username, password: hashedPassword });
         await newUser.save();
-        
         req.session.userId = newUser._id;
         req.session.username = newUser.username;
         res.redirect('/');
     } catch (e) {
-        console.error("Errore registrazione:", e);
-        res.status(500).send("Errore interno del server durante la registrazione.");
+        res.status(500).send("Errore di registrazione.");
     }
 });
 
-// Login
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -100,96 +97,124 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Logout
 app.get('/api/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.redirect('/login.html');
-    });
+    req.session.destroy(() => res.redirect('/login.html'));
 });
 
-// Ottieni dati utente corrente
 app.get('/api/current-user', (req, res) => {
     if (!req.session.userId) return res.status(401).json({ loggedIn: false });
     res.json({ loggedIn: true, username: req.session.username });
 });
 
-// --- ROTTE ADMIN (Gestione Utenti) ---
-
-app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
+// Aggiornamento dati utente / password
+app.put('/api/user/update', isAuthenticated, async (req, res) => {
     try {
-        const users = await User.find({}, { password: 0 });
-        res.json(users);
+        const { newUsername, newPassword } = req.body;
+        const updateData = {};
+        if (newUsername) updateData.username = newUsername;
+        if (newPassword) updateData.password = await bcrypt.hash(newPassword, 10);
+        
+        const updated = await User.findByIdAndUpdate(req.session.userId, updateData, { new: true });
+        if (newUsername) req.session.username = updated.username;
+        res.json({ success: true, username: req.session.username });
     } catch (e) {
-        res.status(500).send("Errore nel recupero degli utenti.");
+        res.status(500).json({ error: "Errore durante l'aggiornamento dell'account." });
     }
+});
+
+// Eliminazione account utente e relativi profumi
+app.delete('/api/user/delete', isAuthenticated, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.session.userId);
+        await Perfume.deleteMany({ userId: req.session.userId });
+        req.session.destroy(() => res.json({ success: true }));
+    } catch (e) {
+        res.status(500).json({ error: "Errore eliminazione account." });
+    }
+});
+
+// --- ROTTE ADMIN ---
+app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
+    const users = await User.find({}, { password: 0 });
+    res.json(users);
 });
 
 app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+    await User.findByIdAndDelete(req.params.id);
+    await Perfume.deleteMany({ userId: req.params.id });
+    res.json({ success: true });
+});
+
+// --- ROTTE PROFUMI, RICERCA E SUGGERIMENTI ---
+
+// Autocompletamento mentre scrivi (stile Google Search)
+app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     try {
-        const userId = req.params.id;
-        await User.findByIdAndDelete(userId);
-        await Perfume.deleteMany({ userId });
-        res.json({ success: true });
+        const query = req.query.q || '';
+        const suggestions = await searchPerfumeSuggestions(query);
+        res.json(suggestions);
     } catch (e) {
-        res.status(500).send("Errore durante l'eliminazione dell'utente.");
+        res.status(500).json({ error: "Errore suggerimenti" });
     }
 });
 
-// --- ROTTE APPLICAZIONE (protette da userId) ---
+// Ricerca dettagliata profumo + Prezzi online (inclusi TrovaPrezzi e store)
+app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
+    try {
+        const { query } = req.body;
+        const details = await getPerfumeDetails(query);
+        const prices = await scrapePrices(query);
+        res.json({ details, prices });
+    } catch (e) {
+        res.status(500).json({ error: "Errore nella ricerca dei dettagli e prezzi" });
+    }
+});
 
-// Ottieni la libreria profumi dell'utente loggato
+// Ottieni libreria e wishlist dell'utente
 app.get('/api/perfumes', isAuthenticated, async (req, res) => {
     try {
         const perfumes = await Perfume.find({ userId: req.session.userId });
         res.json(perfumes);
     } catch (e) {
-        res.status(500).json({ error: "Errore nel caricamento della libreria" });
+        res.status(500).json({ error: "Errore caricamento profumi" });
     }
 });
 
-// Aggiungi un profumo alla libreria dell'utente
+// Aggiungi profumo a My Library o My Wishlist
 app.post('/api/perfumes', isAuthenticated, async (req, res) => {
     try {
-        const { name, notes, customUrls } = req.body;
+        const { name, brand, size, imageUrl, description, notes, perfumer, year, listType } = req.body;
         const newPerfume = new Perfume({
             userId: req.session.userId,
             name,
+            brand,
+            size,
+            imageUrl,
+            description,
             notes,
-            customUrls: customUrls || []
+            perfumer,
+            year,
+            listType: listType || 'library'
         });
         await newPerfume.save();
         res.json({ success: true, perfume: newPerfume });
     } catch (e) {
-        res.status(500).json({ error: "Errore durante il salvataggio" });
+        res.status(500).json({ error: "Errore salvataggio profumo" });
     }
 });
 
-// Elimina un profumo (solo se appartiene all'utente loggato)
+// Elimina profumo
 app.delete('/api/perfumes/:id', isAuthenticated, async (req, res) => {
     try {
         await Perfume.findOneAndDelete({ _id: req.params.id, userId: req.session.userId });
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: "Errore durante l'eliminazione" });
+        res.status(500).json({ error: "Errore eliminazione" });
     }
 });
 
-// Ricerca prezzi (scraper)
-app.post('/api/scrape', isAuthenticated, async (req, res) => {
-    try {
-        const { query, customUrls } = req.body;
-        const results = await scrapePrices(query, customUrls);
-        res.json(results);
-    } catch (e) {
-        res.status(500).json({ error: "Errore nello scraping" });
-    }
-});
-
-// Protezione file statici / index.html principale
 app.get('/', isAuthenticated, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`Server avviato sulla porta ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server avviato sulla porta ${PORT}`));
