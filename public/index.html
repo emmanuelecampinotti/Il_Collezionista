@@ -3,185 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Il Collezionista - La mia Libreria</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 2rem; color: #333; }
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 1rem 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 2rem; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
-        input, textarea { width: 100%; padding: 0.6rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { padding: 0.6rem 1.2rem; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #34495e; }
-        .logout-btn { background: #c0392b; }
-        .logout-btn:hover { background: #e74c3c; }
-        ul { list-style: none; padding: 0; }
-        li { background: #fff; border: 1px solid #ddd; padding: 1rem; margin-bottom: 0.8rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .admin-section { background: #eef2f3; border-left: 4px solid #2980b9; display: none; }
-    </style>
+    <title>Il Collezionista di Profumi</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>La mia Libreria di Profumi</h1>
-            <div>
-                <span id="user-display" style="margin-right: 1rem; font-weight: bold;"></span>
-                <a href="/api/logout"><button class="logout-btn">Esci</button></a>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <!-- HEADER SUPERIORE -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-indigo-700 cursor-pointer" onclick="switchTab('home')"><i class="fas fa-spray-can"></i> PerfumeHub</h1>
+            
+            <!-- Barra di ricerca rapida con autocompletamento -->
+            <div class="relative w-1/3">
+                <input type="text" id="globalSearchInput" placeholder="Cerca un profumo (es. Acqua di Giò)..." class="w-full px-4 py-2 border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="handleAutocomplete(this.value)">
+                <div id="autocompleteDropdown" class="absolute left-0 right-0 bg-white border mt-1 rounded-lg shadow-lg hidden z-50"></div>
+            </div>
+
+            <!-- Profilo utente in alto a destra -->
+            <div class="relative">
+                <button onclick="toggleUserMenu()" class="flex items-center space-x-2 focus:outline-none bg-indigo-50 px-3 py-1.5 rounded-full">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold" id="userInitial">U</div>
+                    <span class="font-medium text-sm" id="userNameDisplay">Utente</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div id="userMenuDropdown" class="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-xl hidden py-2 z-50">
+                    <a href="#" onclick="openAccountModal()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50"><i class="fas fa-user-cog mr-2"></i> I miei dati / Password</a>
+                    <a href="/api/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Logout</a>
+                </div>
             </div>
         </div>
+    </header>
 
-        <!-- Pannello Admin (Visibile solo per l'amministratore) -->
-        <div class="card admin-section" id="admin-panel">
-            <h3>Pannello di Controllo Admin</h3>
-            <p><small>Gestione degli utenti iscritti alla piattaforma:</small></p>
-            <ul id="users-list">
-                <p>Caricamento utenti...</p>
-            </ul>
+    <!-- NAVIGAZIONE PRINCIPALE -->
+    <nav class="bg-indigo-600 text-white shadow">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-6 py-2 text-sm font-medium">
+            <button onclick="switchTab('home')" class="hover:underline"><i class="fas fa-home mr-1"></i> Home / Offerte</button>
+            <button onclick="switchTab('library')" class="hover:underline"><i class="fas id-card mr-1"></i> My Library</button>
+            <button onclick="switchTab('wishlist')" class="hover:underline"><i class="fas fa-heart mr-1"></i> My Wishlist</button>
         </div>
+    </nav>
 
-        <div class="card">
-            <h3>Aggiungi un nuovo profumo</h3>
-            <form id="perfume-form" onsubmit="addPerfume(event)">
-                <label>Nome del Profumo:</label>
-                <input type="text" id="name" required placeholder="Es. Tobacco Vanille - Tom Ford">
-                
-                <label>Note / Descrizione:</label>
-                <textarea id="notes" placeholder="Es. Vaniglia, tabacco, spezie..."></textarea>
-                
-                <button type="submit">Salva in Libreria</button>
-            </form>
-        </div>
+    <!-- CONTENUTO PRINCIPALE -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
 
-        <div class="card">
-            <h3>I tuoi Profumi Salvati</h3>
-            <ul id="perfumes-list">
-                <p>Caricamento in corso...</p>
-            </ul>
+        <!-- TAB HOME & OFFERTE SPECIALI -->
+        <section id="tab-home" class="space-y-6">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-xl shadow">
+                <h2 class="text-2xl font-bold mb-2">Offerte Speciali del Giorno</h2>
+                <p class="text-sm opacity-90">I profumi più cercati al miglior prezzo aggiornato online.</p>
+            </div>
+
+            <!-- Risultato ricerca attiva o offerte -->
+            <div id="searchResultContainer" class="hidden bg-white p-6 rounded-xl shadow mb-6"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="specialOffersGrid">
+                <!-- Esempio offerta speciale -->
+                <div class="bg-white border rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">Sconto 25%</span>
+                        <img src="https://via.placeholder.com/150" alt="Profumo" class="w-full h-40 object-contain my-3">
+                        <h3 class="font-bold text-lg">Acqua di Giò Parfum</h3>
+                        <p class="text-xs text-gray-500 mb-2">Giorgio Armani • 100 ml</p>
+                        <p class="text-indigo-600 font-bold text-xl">€ 85,00 <span class="line-through text-gray-400 text-sm">€ 115,00</span></p>
+                        <p class="text-xs text-gray-600 mt-2">Disponibile su Notino con spedizione gratuita.</p>
+                    </div>
+                    <button onclick="searchAndShowDetails('Acqua di Giò Parfum')" class="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Visualizza Prezzi & Dettagli</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB MY LIBRARY -->
+        <section id="tab-library" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-book mr-2"></i> La Mia Libreria Profumi</h2>
+                <button onclick="startVoiceInput()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm flex items-center shadow hover:bg-green-700">
+                    <i class="fas fa-microphone mr-2"></i> Aggiungi con Audio (+)
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="libraryGrid"></div>
+        </section>
+
+        <!-- TAB MY WISHLIST -->
+        <section id="tab-wishlist" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-heart mr-2 text-pink-500"></i> My Wishlist</h2>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-600">Ordina per:</span>
+                    <select id="sortWishlistSelect" onchange="sortWishlist(this.value)" class="border rounded px-2 py-1 text-sm">
+                        <option value="name">Nome</option>
+                        <option value="price-asc">Prezzo Crescente</option>
+                        <option value="price-desc">Prezzo Decrescente</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="wishlistGrid"></div>
+        </section>
+
+    </main>
+
+    <!-- MODALE IMPOSTAZIONI ACCOUNT -->
+    <div id="accountModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-96 shadow-lg relative">
+            <h3 class="text-lg font-bold mb-4">Gestione Account</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-600">Nuovo Nome Utente</label>
+                    <input type="text" id="updateUsername" class="w-full border p-2 rounded text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-600">Nuova Password</label>
+                    <input type="password" id="updatePassword" class="w-full border p-2 rounded text-sm" placeholder="Lascia vuoto per non variare">
+                </div>
+                <div class="flex justify-between pt-2">
+                    <button onclick="updateAccountData()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Salva Modifiche</button>
+                    <button onclick="deleteAccount()" class="bg-red-600 text-white px-4 py-2 rounded text-sm">Elimina Account</button>
+                </div>
+            </div>
+            <button onclick="closeAccountModal()" class="absolute top-3 right-3 text-gray-400 hover:text-black"><i class="fas fa-times"></i></button>
         </div>
     </div>
 
+    <!-- SCRIPT LOGICA FRONTEND -->
     <script>
-        async function loadUserData() {
-            try {
-                const res = await fetch('/api/current-user');
-                const data = await res.json();
-                if (data.loggedIn) {
-                    document.getElementById('user-display').innerText = `Benvenuto, ${data.username}`;
-                    loadPerfumes();
+        let currentUser = "";
 
-                    // Se l'utente è l'admin ('test'), mostriamo il pannello e carichiamo gli utenti
-                    if (data.username === 'test') {
-                        document.getElementById('admin-panel').style.display = 'block';
-                        loadAdminUsers();
-                    }
-                }
-            } catch (e) {
-                console.error("Errore caricamento utente");
+        async function initApp() {
+            const res = await fetch('/api/current-user');
+            const data = await res.json();
+            if (data.loggedIn) {
+                currentUser = data.username;
+                document.getElementById('userNameDisplay').innerText = currentUser;
+                document.getElementById('userInitial').innerText = currentUser.charAt(0).toUpperCase();
+                document.getElementById('updateUsername').value = currentUser;
+                loadUserPerfumes();
+            } else {
+                window.location.href = '/login.html';
             }
         }
 
-        async function loadAdminUsers() {
-            try {
-                const res = await fetch('/api/admin/users');
-                if (!res.ok) return;
-                const users = await res.json();
-                const list = document.getElementById('users-list');
-                
-                if (users.length === 0) {
-                    list.innerHTML = '<p>Nessun utente registrato.</p>';
-                    return;
-                }
+        function switchTab(tab) {
+            document.getElementById('tab-home').classList.add('hidden');
+            document.getElementById('tab-library').classList.add('hidden');
+            document.getElementById('tab-wishlist').classList.add('hidden');
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+        }
 
-                list.innerHTML = '';
-                users.forEach(u => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div>
-                            <strong>Username:</strong> ${u.username} <br>
-                            <small>ID: ${u._id}</small>
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenuDropdown');
+            menu.classList.toggle('hidden');
+        }
+
+        // Autocompletamento ricerca stile Google
+        async function handleAutocomplete(val) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (!val || val.length < 2) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            const res = await fetch(`/api/perfumes/autocomplete?q=${encodeURIComponent(val)}`);
+            const suggestions = await res.json();
+            
+            if (suggestions.length > 0) {
+                dropdown.innerHTML = suggestions.map(s => `<div class="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer" onclick="selectSuggestion('${s}')">${s}</div>`).join('');
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectSuggestion(val) {
+            document.getElementById('globalSearchInput').value = val;
+            document.getElementById('autocompleteDropdown').classList.add('hidden');
+            searchAndShowDetails(val);
+        }
+
+        // Cerca dettagli e prezzi online
+        async function searchAndShowDetails(query) {
+            switchTab('home');
+            const container = document.getElementById('searchResultContainer');
+            container.classList.remove('hidden');
+            container.innerHTML = `<p class="text-center py-6 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> Ricerca dettagli e prezzi online in corso...</p>`;
+
+            const res = await fetch('/api/perfumes/search-details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            const data = await res.json();
+            const d = data.details;
+            const prices = data.prices;
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row gap-6">
+                    <img src="${d.imageUrl}" class="w-48 h-48 object-contain mx-auto border rounded-lg p-2">
+                    <div class="flex-1 space-y-2">
+                        <h2 class="text-2xl font-bold">${d.name}</h2>
+                        <p class="text-sm text-gray-600"><b>Brand:</b> ${d.brand} | <b>Anno:</b> ${d.year} | <b>Naso:</b> ${d.perfumer}</p>
+                        <p class="text-sm text-gray-700"><b>Descrizione:</b> ${d.description}</p>
+                        <p class="text-sm text-gray-700"><b>Note Olfattive:</b> Testa (${d.notes.top}) • Cuore (${d.notes.heart}) • Fondo (${d.notes.base})</p>
+                        
+                        <div class="pt-2 flex space-x-3">
+                            <button onclick='addPerfumeToDB(${JSON.stringify(d).replace(/'/g, "&#39;")}, "library")' class="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"><i class="fas fa-plus mr-1"></i> Add to My Library</button>
+                            <button onclick='addPerfumeToDB(${JSON.stringify(d).replace(/'/g, "&#39;")}, "wishlist")' class="bg-pink-600 text-white px-4 py-2 rounded text-sm hover:bg-pink-700"><i class="fas fa-heart mr-1"></i> Add to My Wishlist</button>
                         </div>
-                        ${u.username !== 'test' ? `<button onclick="deleteUser('${u._id}')" style="background: #e74c3c; padding: 0.3rem 0.6rem; font-size: 0.8rem;">Elimina Utente</button>` : '<small style="color: gray;">Admin principale</small>'}
-                    `;
-                    list.appendChild(li);
-                });
-            } catch (e) {
-                console.error("Errore caricamento utenti admin");
+                    </div>
+                </div>
+                <div class="mt-6 border-t pt-4">
+                    <h3 class="font-bold text-lg mb-3"><i class="fas fa-tags mr-2"></i> Confronto Prezzi Online (inclusi TrovaPrezzi & Store)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        ${prices.length > 0 ? prices.map(p => `
+                            <div class="border p-3 rounded-lg flex justify-between items-center bg-gray-50">
+                                <div>
+                                    <p class="font-bold text-sm">${p.site}</p>
+                                    <p class="text-indigo-600 font-bold">${p.price}</p>
+                                </div>
+                                <a href="${p.url}" target="_blank" class="bg-indigo-500 text-white px-3 py-1 rounded text-xs hover:bg-indigo-600">Vai al sito</a>
+                            </div>
+                        `).join('') : '<p class="text-sm text-gray-500">Nessun prezzo disponibile online al momento.</p>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function addPerfumeToDB(perfume, listType) {
+            perfume.listType = listType;
+            const res = await fetch('/api/perfumes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(perfume)
+            });
+            if (res.ok) {
+                alert(`Aggiunto con successo alla tua ${listType === 'library' ? 'Library' : 'Wishlist'}!`);
+                loadUserPerfumes();
             }
         }
 
-        async function deleteUser(id) {
-            if (!confirm("Sei sicuro di voler eliminare questo utente e tutti i suoi dati?")) return;
-            try {
-                const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-                if (res.ok) loadAdminUsers();
-                else alert("Errore durante l'eliminazione dell'utente.");
-            } catch (e) {
-                alert("Errore di connessione.");
-            }
-        }
+        async function loadUserPerfumes() {
+            const res = await fetch('/api/perfumes');
+            const perfumes = await res.json();
+            
+            const libraryGrid = document.getElementById('libraryGrid');
+            const wishlistGrid = document.getElementById('wishlistGrid');
+            
+            libraryGrid.innerHTML = '';
+            wishlistGrid.innerHTML = '';
 
-        async function loadPerfumes() {
-            try {
-                const res = await fetch('/api/perfumes');
-                const perfumes = await res.json();
-                const list = document.getElementById('perfumes-list');
-                
-                if (perfumes.length === 0) {
-                    list.innerHTML = '<p>La tua libreria è ancora vuota. Aggiungi il primo profumo qui sopra!</p>';
-                    return;
-                }
-
-                list.innerHTML = '';
-                perfumes.forEach(p => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
+            perfumes.forEach(p => {
+                const card = `
+                    <div class="bg-white border rounded-lg p-3 shadow-sm flex flex-col justify-between">
                         <div>
-                            <strong>${p.name}</strong><br>
-                            <small>${p.notes || 'Nessuna nota inserita'}</small>
+                            <img src="${p.imageUrl}" class="w-full h-32 object-contain mb-2">
+                            <h4 class="font-bold text-sm">${p.name}</h4>
+                            <p class="text-xs text-gray-500">${p.brand || ''}</p>
                         </div>
-                        <button onclick="deletePerfume('${p._id}')" style="background: #e74c3c; padding: 0.3rem 0.6rem; font-size: 0.8rem;">Elimina</button>
-                    `;
-                    list.appendChild(li);
-                });
-            } catch (e) {
-                document.getElementById('perfumes-list').innerHTML = '<p>Errore nel caricamento dei profumi.</p>';
-            }
-        }
-
-        async function addPerfume(event) {
-            event.preventDefault();
-            const name = document.getElementById('name').value;
-            const notes = document.getElementById('notes').value;
-
-            try {
-                const res = await fetch('/api/perfumes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, notes })
-                });
-
-                if (res.ok) {
-                    document.getElementById('perfume-form').reset();
-                    loadPerfumes();
+                        <button onclick="deletePerfume('${p._id}')" class="mt-3 text-red-500 text-xs hover:underline text-left"><i class="fas fa-trash mr-1"></i> Rimuovi</button>
+                    </div>
+                `;
+                if (p.listType === 'wishlist') {
+                    wishlistGrid.innerHTML += card;
                 } else {
-                    alert("Errore durante il salvataggio.");
+                    libraryGrid.innerHTML += card;
                 }
-            } catch (e) {
-                alert("Errore di connessione.");
-            }
+            });
         }
 
         async function deletePerfume(id) {
-            if (!confirm("Sei sicuro di voler eliminare questo profumo?")) return;
-            try {
-                const res = await fetch(`/api/perfumes/${id}`, { method: 'DELETE' });
-                if (res.ok) loadPerfumes();
-                else alert("Errore durante l'eliminazione.");
-            } catch (e) {
-                alert("Errore di connessione.");
+            if (confirm("Vuoi rimuovere questo profumo?")) {
+                await fetch(`/api/perfumes/${id}`, { method: 'DELETE' });
+                loadUserPerfumes();
             }
         }
 
-        loadUserData();
+        // Funzione per input vocale simulata / microfono
+        function startVoiceInput() {
+            const spokenText = prompt("Simula dettatura vocale (es. 'Aggiungi Acqua di Gio'):");
+            if (spokenText) {
+                const cleanQuery = spokenText.replace(/aggiungi/gi, '').trim();
+                searchAndShowDetails(cleanQuery);
+            }
+        }
+
+        function openAccountModal() { document.getElementById('accountModal').classList.remove('hidden'); }
+        function closeAccountModal() { document.getElementById('accountModal').classList.add('hidden'); }
+
+        async function updateAccountData() {
+            const newUsername = document.getElementById('updateUsername').value;
+            const newPassword = document.getElementById('updatePassword').value;
+            const res = await fetch('/api/user/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newUsername, newPassword })
+            });
+            if (res.ok) {
+                alert("Account aggiornato con successo!");
+                closeAccountModal();
+                initApp();
+            }
+        }
+
+        async function deleteAccount() {
+            if (confirm("Sei sicuro di voler eliminare definitivamente il tuo account e tutti i dati associati?")) {
+                const res = await fetch('/api/user/delete', { method: 'DELETE' });
+                if (res.ok) window.location.href = '/login.html';
+            }
+        }
+
+        function sortWishlist(criteria) {
+            // Logica di ordinamento wishlist
+            loadUserPerfumes();
+        }
+
+        window.onload = initApp;
     </script>
 </body>
 </html>
