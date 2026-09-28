@@ -1,11 +1,9 @@
 const axios = require('axios');
-const cheerio =جيل require('cheerio');
+const cheerio = require('cheerio');
 const { GoogleGenAI } = require('@google/genai');
 
-// Inizializza Gemini con la chiave segreta salvata nelle variabili d'ambiente di Render
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Funzione per estrarre una lista pulita di profumi usando Gemini se l'utente inserisce un testo libero
 async function parsePerfumeList(rawText) {
     if (!process.env.GEMINI_API_KEY) return [rawText];
     try {
