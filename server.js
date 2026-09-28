@@ -51,6 +51,14 @@ function isAuthenticated(req, res, next) {
     res.redirect('/login.html');
 }
 
+// Middleware di controllo Admin (Modifica 'test' con il tuo username esatto se vuoi cambiarlo)
+function isAdmin(req, res, next) {
+    if (req.session && req.session.username === 'test') {
+        return next();
+    }
+    res.status(403).send("Accesso negato: Area riservata agli amministratori.");
+}
+
 // --- ROTTE DI AUTENTICAZIONE ---
 
 // Registrazione
@@ -58,7 +66,6 @@ app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        // Controlliamo se esiste già
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(400).send("Questo nome utente è già occupato.");
@@ -68,7 +75,6 @@ app.post('/api/register', async (req, res) => {
         const newUser = new User({ username, password: hashedPassword });
         await newUser.save();
         
-        // Dopo la registrazione, logghiamo direttamente l'utente e lo mandiamo alla home
         req.session.userId = newUser._id;
         req.session.username = newUser.username;
         res.redirect('/');
@@ -77,6 +83,7 @@ app.post('/api/register', async (req, res) => {
         res.status(500).send("Errore interno del server durante la registrazione.");
     }
 });
+
 // Login
 app.post('/api/login', async (req, res) => {
     try {
@@ -104,6 +111,28 @@ app.get('/api/logout', (req, res) => {
 app.get('/api/current-user', (req, res) => {
     if (!req.session.userId) return res.status(401).json({ loggedIn: false });
     res.json({ loggedIn: true, username: req.session.username });
+});
+
+// --- ROTTE ADMIN (Gestione Utenti) ---
+
+app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const users = await User.find({}, { password: 0 });
+        res.json(users);
+    } catch (e) {
+        res.status(500).send("Errore nel recupero degli utenti.");
+    }
+});
+
+app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        await User.findByIdAndDelete(userId);
+        await Perfume.deleteMany({ userId });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).send("Errore durante l'eliminazione dell'utente.");
+    }
 });
 
 // --- ROTTE APPLICAZIONE (protette da userId) ---
