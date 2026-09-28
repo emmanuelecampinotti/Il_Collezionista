@@ -8,21 +8,18 @@ const { scrapePrices, searchPerfumeSuggestions, searchPerfumeList, getPerfumeDet
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connessione a MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 }).then(() => console.log("MongoDB Connesso con successo!"))
   .catch(err => console.log("Errore connessione MongoDB:", err));
 
-// Schema Utente
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true }
 });
 const User = mongoose.model('User', UserSchema);
 
-// Schema Profumo
 const PerfumeSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true },
@@ -42,7 +39,6 @@ const PerfumeSchema = new mongoose.Schema({
 });
 const Perfume = mongoose.model('Perfume', PerfumeSchema);
 
-// Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -54,7 +50,6 @@ app.use(session({
     cookie: { secure: false }
 }));
 
-// Middleware di autenticazione e admin
 function isAuthenticated(req, res, next) {
     if (req.session && req.session.userId) return next();
     res.redirect('/login.html');
@@ -65,7 +60,6 @@ function isAdmin(req, res, next) {
     res.status(403).send("Accesso negato: Area riservata agli amministratori.");
 }
 
-// --- ROTTE AUTENTICAZIONE & UTENTE ---
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -131,7 +125,6 @@ app.delete('/api/user/delete', isAuthenticated, async (req, res) => {
     }
 });
 
-// --- ROTTE ADMIN ---
 app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
     const users = await User.find({}, { password: 0 });
     res.json(users);
@@ -142,8 +135,6 @@ app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) =>
     await Perfume.deleteMany({ userId: req.params.id });
     res.json({ success: true });
 });
-
-// --- ROTTE PROFUMI, RICERCA E ASSISTENTE IA ---
 
 app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     try {
