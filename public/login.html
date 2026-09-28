@@ -18,12 +18,13 @@
 <body>
     <div class="auth-container">
         <h2 id="form-title">Accedi</h2>
-        <form id="auth-form" action="/api/login" method="POST">
-            <input type="text" name="username" placeholder="Nome utente" required>
-            <input type="password" name="password" placeholder="Password" required>
+        <!-- Usiamo JavaScript per gestire l'invio ed evitare comportamenti strani -->
+        <form id="auth-form" onsubmit="handleSubmit(event)">
+            <input type="text" id="username" name="username" placeholder="Nome utente" required>
+            <input type="password" id="password" name="password" placeholder="Password" required>
             <button type="submit" id="submit-btn">Entra</button>
         </form>
-        <button class="toggle-btn" onclick="toggleMode()">Non hai un account? Registrati</button>
+        <button class="toggle-btn" type="button" onclick="toggleMode()">Non hai un account? Registrati</button>
     </div>
 
     <script>
@@ -31,20 +32,43 @@
         function toggleMode() {
             isLogin = !isLogin;
             const title = document.getElementById('form-title');
-            const form = document.getElementById('auth-form');
             const btn = document.getElementById('submit-btn');
             const toggle = document.querySelector('.toggle-btn');
 
             if (isLogin) {
                 title.innerText = 'Accedi';
-                form.action = '/api/login';
                 btn.innerText = 'Entra';
                 toggle.innerText = 'Non hai un account? Registrati';
             } else {
                 title.innerText = 'Registrati';
-                form.action = '/api/register';
                 btn.innerText = 'Crea Account';
                 toggle.innerText = 'Hai già un account? Accedi';
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const endpoint = isLogin ? '/api/login' : '/api/register';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    const text = await response.text();
+                    alert("Errore: " + text);
+                }
+            } catch (err) {
+                alert("Errore di connessione al server.");
             }
         }
     </script>
