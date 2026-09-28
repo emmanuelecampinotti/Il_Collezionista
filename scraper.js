@@ -5,7 +5,6 @@ const cheerio = require('cheerio');
 async function searchPerfumeSuggestions(query) {
     try {
         if (!query || query.length < 2) return [];
-        // Ricerca mirata simulata/strutturata su cataloghi reali per evitare dati sporchi
         const formattedQuery = encodeURIComponent(query);
         const url = `https://www.fragrantica.com/search/?query=${formattedQuery}`;
         
@@ -15,7 +14,6 @@ async function searchPerfumeSuggestions(query) {
         const $ = cheerio.load(response.data);
         const suggestions = [];
 
-        // Estrazione pulita dei risultati dai link di Fragrantica
         $('.card.row').each((i, el) => {
             const title = $(el).find('.oscar-name').text().trim() \vert{}\vert{}$(el).find('h3').text().trim();
             if (title && !suggestions.includes(title) && suggestions.length < 8) {
@@ -23,15 +21,13 @@ async function searchPerfumeSuggestions(query) {
             }
         });
 
-        // Fallback di sicurezza se la ricerca esterna non risponde subito
         if (suggestions.length === 0) {
-            const genericList = [
+            return [
                 `${query} - Eau de Parfum`,
                 `${query} - Eau de Toilette`,
                 `${query} Intense`,
                 `${query} Privé`
             ];
-            return genericList;
         }
 
         return suggestions;
@@ -70,7 +66,6 @@ async function searchPerfumeList(query) {
             }
         });
 
-        // Se non troviamo elementi strutturati, generiamo risultati coerenti basati sulla query
         if (results.length === 0) {
             for (let i = 1; i <= 6; i++) {
                 results.push({
@@ -110,7 +105,6 @@ async function getPerfumeDetails(query) {
 
 async function scrapePrices(query) {
     const encoded = encodeURIComponent(query);
-    // Link diretti e mirati ai principali store di settore e motori di ricerca con query puntuale
     return [
         {
             site: "Notino",
