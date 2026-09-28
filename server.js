@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { scrapePrices, searchPerfumeSuggestions, getPerfumeDetails } = require('./scraper');
+const { scrapePrices, searchPerfumeSuggestions, searchPerfumeList, getPerfumeDetails } = require('./scraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -155,6 +155,17 @@ app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
         res.json(suggestions);
     } catch (e) {
         res.status(500).json({ error: "Errore suggerimenti" });
+    }
+});
+
+// Ricerca della lista di profumi (es. quando cerchi un brand come Issey Miyake)
+app.post('/api/perfumes/search-list', isAuthenticated, async (req, res) => {
+    try {
+        const { query } = req.body;
+        const list = await searchPerfumeList(query);
+        res.json(list);
+    } catch (e) {
+        res.status(500).json({ error: "Errore durante la ricerca della lista profumi" });
     }
 });
 
