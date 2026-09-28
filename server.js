@@ -8,10 +8,9 @@ const { scrapePrices, searchPerfumeSuggestions, searchPerfumeList, getPerfumeDet
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log("MongoDB Connesso con successo!"))
+// Connessione a MongoDB pulita (senza opzioni obsolete che fanno crashare l'app)
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connesso con successo!"))
   .catch(err => console.log("Errore connessione MongoDB:", err));
 
 const UserSchema = new mongoose.Schema({
@@ -167,7 +166,6 @@ app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
     }
 });
 
-// Endpoint Assistente IA per aggiunta multipla in Wishlist
 app.post('/api/perfumes/ai-assistant', isAuthenticated, async (req, res) => {
     try {
         const { text } = req.body;
@@ -241,4 +239,7 @@ app.get('/', isAuthenticated, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`Server avviato sulla porta ${PORT}`));
+// Avvio corretto vincolato a '0.0.0.0' obbligatorio per Render
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server avviato sulla porta ${PORT}`);
+});
