@@ -1,35 +1,46 @@
 const axios = require('axios');
-const cheerio =cheerio = require('cheerio');
+const cheerio = require('cheerio');
 
-// Restituisce suggerimenti di autocompletamento in tempo reale
+// Restituisce suggerimenti di autocompletamento in tempo reale mentre scrivi
 async function searchPerfumeSuggestions(query) {
     if (!query || query.length < 2) return [];
-    return [
-        `${query} (Tutti i profumi)`,
-        `${query} Pour Homme`,
-        `${query} Pour Femme`,
-        `${query} L'Eau d'Issey`
+    const q = query.toLowerCase();
+    const mockDatabase = [
+        "Issey Miyake L'Eau d'Issey Pour Homme",
+        "Issey Miyake L'Eau d'Issey Eau de Parfum",
+        "Issey Miyake A Drop d'Issey",
+        "Issey Miyake Fusion d'Issey",
+        "Tom Ford Black Orchid",
+        "Tom Ford Oud Wood",
+        "Dior Sauvage",
+        "Bleu de Chanel"
     ];
+    // Restituisce i suggerimenti che contengono la query digitata
+    return mockDatabase.filter(item => item.toLowerCase().includes(q)).slice(0, 5);
 }
 
-// Cerca una lista di profumi (es. se cerchi un brand come Issey Miyake)
+// Cerca una lista di profumi (es. se cerchi un intero brand come Issey Miyake)
 async function searchPerfumeList(query) {
     try {
-        const encoded = encodeURIComponent(query);
-        // Generiamo un catalogo reale strutturato per i brand più cercati o query generali
+        const q = query.toLowerCase();
+        // Catalogo di esempio strutturato per brand o ricerche multiple
         const mockCatalog = [
-            { id: 1, name: `${query} L'Eau d'Issey Pour Homme`, brand: query, size: "125 ml", imageUrl: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300", description: "Fragranza agrumata e speziata da uomo.", year: "1994", perfumer: "Jacques Cavallier" },
-            { id: 2, name: `${query} L'Eau d'Issey Eau de Parfum`, brand: query, size: "90 ml", imageUrl: "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300", description: "Fragranza floreale acquatica da donna.", year: "1992", perfumer: "Jacques Cavallier" },
-            { id: 3, name: `${query} A Drop d'Issey`, brand: query, size: "90 ml", imageUrl: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=300", description: "Fragranza floreale muschiata.", year: "2021", perfumer: "Ane Ayo" },
-            { id: 4, name: `${query} Fusion d'Issey`, brand: query, size: "100 ml", imageUrl: "https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?w=300", description: "Fragranza fougère legnosa.", year: "2020", perfumer: "Nathalie Lorson" }
+            { id: 1, name: "Issey Miyake L'Eau d'Issey Pour Homme", brand: "Issey Miyake", size: "125 ml", imageUrl: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300", description: "Fragranza agrumata e speziata da uomo.", year: "1994", perfumer: "Jacques Cavallier" },
+            { id: 2, name: "Issey Miyake L'Eau d'Issey Eau de Parfum", brand: "Issey Miyake", size: "90 ml", imageUrl: "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=300", description: "Fragranza floreale acquatica da donna.", year: "1992", perfumer: "Jacques Cavallier" },
+            { id: 3, name: "Issey Miyake A Drop d'Issey", brand: "Issey Miyake", size: "90 ml", imageUrl: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=300", description: "Fragranza floreale muschiata.", year: "2021", perfumer: "Ane Ayo" },
+            { id: 4, name: "Issey Miyake Fusion d'Issey", brand: "Issey Miyake", size: "100 ml", imageUrl: "https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?w=300", description: "Fragranza fougère legnosa.", year: "2020", perfumer: "Nathalie Lorson" }
         ];
-        return mockCatalog;
+        
+        // Filtra in base alla query (es. se cerchi Issey Miyake restituisce tutti, altrimenti filtra per nome/brand)
+        const results = mockCatalog.filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q));
+        // Se la ricerca è generica sul brand ma non trova match esatti rigidi, restituisce comunque tutto il blocco del brand
+        return results.length > 0 ? results : mockCatalog;
     } catch (e) {
         return [];
     }
 }
 
-// Dettagli specifici di un profumo selezionato
+// Dettagli specifici di un singolo profumo selezionato
 async function getPerfumeDetails(query) {
     return {
         name: query,
@@ -45,11 +56,10 @@ async function getPerfumeDetails(query) {
 
 // Prezzi online e comparazione TrovaPrezzi
 async function scrapePrices(query) {
-    const encoded = encodeURIComponent(query);
     return [
-        { site: "TrovaPrezzi (Notino)", price: "€ 48,50", url: `https://www.trovaprezzi.it` },
-        { site: "TrovaPrezzi (Douglas)", price: "€ 54,00", url: `https://www.trovaprezzi.it` },
-        { site: "Marionnaud", price: "€ 59,90", url: `https://www.marionnaud.it` }
+        { site: "TrovaPrezzi (Notino)", price: "€ 48,50", url: "https://www.trovaprezzi.it" },
+        { site: "TrovaPrezzi (Douglas)", price: "€ 54,00", url: "https://www.trovaprezzi.it" },
+        { site: "Marionnaud", price: "€ 59,90", url: "https://www.marionnaud.it" }
     ];
 }
 
