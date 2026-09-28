@@ -16,6 +16,7 @@
         .logout-btn:hover { background: #e74c3c; }
         ul { list-style: none; padding: 0; }
         li { background: #fff; border: 1px solid #ddd; padding: 1rem; margin-bottom: 0.8rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .admin-section { background: #eef2f3; border-left: 4px solid #2980b9; display: none; }
     </style>
 </head>
 <body>
@@ -26,6 +27,15 @@
                 <span id="user-display" style="margin-right: 1rem; font-weight: bold;"></span>
                 <a href="/api/logout"><button class="logout-btn">Esci</button></a>
             </div>
+        </div>
+
+        <!-- Pannello Admin (Visibile solo per l'amministratore) -->
+        <div class="card admin-section" id="admin-panel">
+            <h3>Pannello di Controllo Admin</h3>
+            <p><small>Gestione degli utenti iscritti alla piattaforma:</small></p>
+            <ul id="users-list">
+                <p>Caricamento utenti...</p>
+            </ul>
         </div>
 
         <div class="card">
@@ -57,9 +67,55 @@
                 if (data.loggedIn) {
                     document.getElementById('user-display').innerText = `Benvenuto, ${data.username}`;
                     loadPerfumes();
+
+                    // Se l'utente è l'admin ('test'), mostriamo il pannello e carichiamo gli utenti
+                    if (data.username === 'test') {
+                        document.getElementById('admin-panel').style.display = 'block';
+                        loadAdminUsers();
+                    }
                 }
             } catch (e) {
                 console.error("Errore caricamento utente");
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const res = await fetch('/api/admin/users');
+                if (!res.ok) return;
+                const users = await res.json();
+                const list = document.getElementById('users-list');
+                
+                if (users.length === 0) {
+                    list.innerHTML = '<p>Nessun utente registrato.</p>';
+                    return;
+                }
+
+                list.innerHTML = '';
+                users.forEach(u => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>Username:</strong> ${u.username} <br>
+                            <small>ID: ${u._id}</small>
+                        </div>
+                        ${u.username !== 'test' ? `<button onclick="deleteUser('${u._id}')" style="background: #e74c3c; padding: 0.3rem 0.6rem; font-size: 0.8rem;">Elimina Utente</button>` : '<small style="color: gray;">Admin principale</small>'}
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                console.error("Errore caricamento utenti admin");
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm("Sei sicuro di voler eliminare questo utente e tutti i suoi dati?")) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+                if (res.ok) loadAdminUsers();
+                else alert("Errore durante l'eliminazione dell'utente.");
+            } catch (e) {
+                alert("Errore di connessione.");
             }
         }
 
