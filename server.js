@@ -143,9 +143,8 @@ app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) =>
     res.json({ success: true });
 });
 
-// --- ROTTE PROFUMI, RICERCA E SUGGERIMENTI ---
+// --- ROTTE PROFUMI, RICERCA E ASSISTENTE IA ---
 
-// Autocompletamento in tempo reale mentre scrivi
 app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     try {
         const query = req.query.q || '';
@@ -156,7 +155,6 @@ app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     }
 });
 
-// Ricerca della lista di profumi (es. brand o query multiple)
 app.post('/api/perfumes/search-list', isAuthenticated, async (req, res) => {
     try {
         const { query } = req.body;
@@ -167,7 +165,6 @@ app.post('/api/perfumes/search-list', isAuthenticated, async (req, res) => {
     }
 });
 
-// Ricerca dettagliata profumo + Prezzi online
 app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
     try {
         const { query } = req.body;
@@ -176,6 +173,36 @@ app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
         res.json({ details, prices });
     } catch (e) {
         res.status(500).json({ error: "Errore nella ricerca dei dettagli e prezzi" });
+    }
+});
+
+// Endpoint Assistente IA per aggiunta multipla in Wishlist
+app.post('/api/perfumes/ai-assistant', isAuthenticated, async (req, res) => {
+    try {
+        const { text } = req.body;
+        let cleanText = text.replace(/aggiungi alla wishlist|aggiungi|alla wishlist|in wishlist|elenco|per favore/gi, '').trim();
+        let items = cleanText.split(/,|\se\s/);
+        
+        let addedCount = 0;
+        for (let item of items) {
+            let perfumeName = item.trim();
+            if (perfumeName.length > 2) {
+                const newPerfume = new Perfume({
+                    userId: req.session.userId,
+                    name: perfumeName,
+                    brand: perfumeName.split(' ')[0] || "Designer",
+                    size: "100 ml",
+                    imageUrl: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300",
+                    description: "Aggiunto tramite assistente IA.",
+                    listType: 'wishlist'
+                });
+                await newPerfume.save();
+                addedCount++;
+            }
+        }
+        res.json({ success: true, message: `Aggiunti con successo ${addedCount} profumi alla tua Wishlist!` });
+    } catch (e) {
+        res.status(500).json({ error: "Errore elaborazione assistente IA" });
     }
 });
 
