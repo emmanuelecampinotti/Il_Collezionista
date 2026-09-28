@@ -22,7 +22,7 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Schema Profumo (con distinzione tra My Library e My Wishlist, note, brand, ml, immagini)
+// Schema Profumo
 const PerfumeSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true },
@@ -106,7 +106,6 @@ app.get('/api/current-user', (req, res) => {
     res.json({ loggedIn: true, username: req.session.username });
 });
 
-// Aggiornamento dati utente / password
 app.put('/api/user/update', isAuthenticated, async (req, res) => {
     try {
         const { newUsername, newPassword } = req.body;
@@ -122,7 +121,6 @@ app.put('/api/user/update', isAuthenticated, async (req, res) => {
     }
 });
 
-// Eliminazione account utente e relativi profumi
 app.delete('/api/user/delete', isAuthenticated, async (req, res) => {
     try {
         await User.findByIdAndDelete(req.session.userId);
@@ -147,7 +145,7 @@ app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) =>
 
 // --- ROTTE PROFUMI, RICERCA E SUGGERIMENTI ---
 
-// Autocompletamento mentre scrivi (stile Google Search)
+// Autocompletamento in tempo reale mentre scrivi
 app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     try {
         const query = req.query.q || '';
@@ -158,7 +156,7 @@ app.get('/api/perfumes/autocomplete', isAuthenticated, async (req, res) => {
     }
 });
 
-// Ricerca della lista di profumi (es. quando cerchi un brand come Issey Miyake)
+// Ricerca della lista di profumi (es. brand o query multiple)
 app.post('/api/perfumes/search-list', isAuthenticated, async (req, res) => {
     try {
         const { query } = req.body;
@@ -169,7 +167,7 @@ app.post('/api/perfumes/search-list', isAuthenticated, async (req, res) => {
     }
 });
 
-// Ricerca dettagliata profumo + Prezzi online (inclusi TrovaPrezzi e store)
+// Ricerca dettagliata profumo + Prezzi online
 app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
     try {
         const { query } = req.body;
@@ -181,7 +179,6 @@ app.post('/api/perfumes/search-details', isAuthenticated, async (req, res) => {
     }
 });
 
-// Ottieni libreria e wishlist dell'utente
 app.get('/api/perfumes', isAuthenticated, async (req, res) => {
     try {
         const perfumes = await Perfume.find({ userId: req.session.userId });
@@ -191,7 +188,6 @@ app.get('/api/perfumes', isAuthenticated, async (req, res) => {
     }
 });
 
-// Aggiungi profumo a My Library o My Wishlist
 app.post('/api/perfumes', isAuthenticated, async (req, res) => {
     try {
         const { name, brand, size, imageUrl, description, notes, perfumer, year, listType } = req.body;
@@ -214,7 +210,6 @@ app.post('/api/perfumes', isAuthenticated, async (req, res) => {
     }
 });
 
-// Elimina profumo
 app.delete('/api/perfumes/:id', isAuthenticated, async (req, res) => {
     try {
         await Perfume.findOneAndDelete({ _id: req.params.id, userId: req.session.userId });
