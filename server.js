@@ -57,15 +57,26 @@ function isAuthenticated(req, res, next) {
 app.post('/api/register', async (req, res) => {
     try {
         const { username, password } = req.body;
+        
+        // Controlliamo se esiste già
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).send("Questo nome utente è già occupato.");
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ username, password: hashedPassword });
         await newUser.save();
-        res.redirect('/login.html?registered=true');
+        
+        // Dopo la registrazione, logghiamo direttamente l'utente e lo mandiamo alla home
+        req.session.userId = newUser._id;
+        req.session.username = newUser.username;
+        res.redirect('/');
     } catch (e) {
-        res.status(400).send("Errore durante la registrazione (utente già esistente?).");
+        console.error("Errore registrazione:", e);
+        res.status(500).send("Errore interno del server durante la registrazione.");
     }
 });
-
 // Login
 app.post('/api/login', async (req, res) => {
     try {
