@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il Collezionista - La mia Libreria</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 2rem; color: #333; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 1rem 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+        input, textarea { width: 100%; padding: 0.6rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 0.6rem 1.2rem; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #34495e; }
+        .logout-btn { background: #c0392b; }
+        .logout-btn:hover { background: #e74c3c; }
+        ul { list-style: none; padding: 0; }
+        li { background: #fff; border: 1px solid #ddd; padding: 1rem; margin-bottom: 0.8rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: flex-start; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>La mia Libreria di Profumi</h1>
+            <div>
+                <span id="user-display" style="margin-right: 1rem; font-weight: bold;"></span>
+                <a href="/api/logout"><button class="logout-btn">Esci</button></a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Aggiungi un nuovo profumo</h3>
+            <form id="perfume-form" onsubmit="addPerfume(event)">
+                <label>Nome del Profumo:</label>
+                <input type="text" id="name" required placeholder="Es. Tobacco Vanille - Tom Ford">
+                
+                <label>Note / Descrizione:</label>
+                <textarea id="notes" placeholder="Es. Vaniglia, tabacco, spezie..."></textarea>
+                
+                <button type="submit">Salva in Libreria</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>I tuoi Profumi Salvati</h3>
+            <ul id="perfumes-list">
+                <p>Caricamento in corso...</p>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function loadUserData() {
+            try {
+                const res = await fetch('/api/current-user');
+                const data = await res.json();
+                if (data.loggedIn) {
+                    document.getElementById('user-display').innerText = `Benvenuto, ${data.username}`;
+                    loadPerfumes();
+                }
+            } catch (e) {
+                console.error("Errore caricamento utente");
+            }
+        }
+
+        async function loadPerfumes() {
+            try {
+                const res = await fetch('/api/perfumes');
+                const perfumes = await res.json();
+                const list = document.getElementById('perfumes-list');
+                
+                if (perfumes.length === 0) {
+                    list.innerHTML = '<p>La tua libreria è ancora vuota. Aggiungi il primo profumo qui sopra!</p>';
+                    return;
+                }
+
+                list.innerHTML = '';
+                perfumes.forEach(p => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>${p.name}</strong><br>
+                            <small>${p.notes || 'Nessuna nota inserita'}</small>
+                        </div>
+                        <button onclick="deletePerfume('${p._id}')" style="background: #e74c3c; padding: 0.3rem 0.6rem; font-size: 0.8rem;">Elimina</button>
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                document.getElementById('perfumes-list').innerHTML = '<p>Errore nel caricamento dei profumi.</p>';
+            }
+        }
+
+        async function addPerfume(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const notes = document.getElementById('notes').value;
+
+            try {
+                const res = await fetch('/api/perfumes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, notes })
+                });
+
+                if (res.ok) {
+                    document.getElementById('perfume-form').reset();
+                    loadPerfumes();
+                } else {
+                    alert("Errore durante il salvataggio.");
+                }
+            } catch (e) {
+                alert("Errore di connessione.");
+            }
+        }
+
+        async function deletePerfume(id) {
+            if (!confirm("Sei sicuro di voler eliminare questo profumo?")) return;
+            try {
+                const res = await fetch(`/api/perfumes/${id}`, { method: 'DELETE' });
+                if (res.ok) loadPerfumes();
+                else alert("Errore durante l'eliminazione.");
+            } catch (e) {
+                alert("Errore di connessione.");
+            }
+        }
+
+        loadUserData();
+    </script>
+</body>
+</html>
